@@ -70,6 +70,33 @@ app.post('/auth/login', async (req, res) => {
   }
 });
 
+// index.js (adicionar este bloco)
+
+// --- ROTA DE WEBHOOK PARA O N8N ---
+
+app.post('/webhooks/n8n/nova-conversa', async (req, res) => {
+  // Extraímos os dados que esperamos receber do n8n
+  const { empresaId, numeroWhatsapp, nomeContato, resumoConversa } = req.body;
+
+  // Validação básica
+  if (!empresaId || !numeroWhatsapp || !nomeContato || !resumoConversa) {
+    return res.status(400).json({ error: 'Dados insuficientes fornecidos pelo webhook.' });
+  }
+
+  try {
+    // Inserimos os dados na tabela 'conversas'
+    await pool.query(
+      'INSERT INTO conversas (empresa_id, numero_whatsapp, nome_contato, status, resumo_conversa) VALUES ($1, $2, $3, $4, $5)',
+      [empresaId, numeroWhatsapp, nomeContato, 'novo', resumoConversa]
+    );
+
+    // Respondemos ao n8n que a operação foi um sucesso
+    res.status(200).json({ message: 'Conversa recebida e salva com sucesso.' });
+  } catch (err) {
+    console.error('Erro no webhook do n8n:', err);
+    res.status(500).json({ error: 'Erro interno ao salvar a conversa.' });
+  }
+});
 // --- MIDDLEWARE DE AUTENTICAÇÃO ---
 
 function authenticateToken(req, res, next) {
